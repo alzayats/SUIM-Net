@@ -1,9 +1,6 @@
 """
 # Data utility functions for training on the SUIM dataset
 # Paper: https://arxiv.org/pdf/2004.01241.pdf  
-# Maintainer: Jahid (email: islam034@umn.edu)
-# Interactive Robotics and Vision Lab (http://irvlab.cs.umn.edu/)
-# Usage: for academic and educational purposes only
 """
 from __future__ import print_function
 from keras.preprocessing.image import ImageDataGenerator
@@ -11,7 +8,6 @@ import numpy as np
 import os
 import fnmatch
 import itertools as it
-from scipy import misc
 
 """
 RGB color code and object categories:
@@ -26,7 +22,7 @@ RGB color code and object categories:
 111 SR: Sand/sea-floor (& rocks)
 """
 def getRobotFishHumanReefWrecks(mask):
-    # for 5 categories: human, robot, fish, wrecks, reefs
+    # for categories: HD, RO, FV, WR, RI
     imw, imh = mask.shape[0], mask.shape[1]
     Human = np.zeros((imw, imh))
     Robot = np.zeros((imw, imh))
@@ -49,8 +45,8 @@ def getRobotFishHumanReefWrecks(mask):
     return np.stack((Robot, Fish, Human, Reef, Wreck), -1) 
 
 
-def getSaliency(mask):
-    # for 4 categories: human, robot, fish, wrecks
+def getRobotFishHumanWrecks(mask):
+    # for categories: HD, RO, FV, WR
     imw, imh = mask.shape[0], mask.shape[1]
     Human = np.zeros((imw, imh))
     Robot = np.zeros((imw, imh))
@@ -70,6 +66,24 @@ def getSaliency(mask):
     return np.stack((Robot, Fish, Human, Wreck), -1) 
 
 
+def getSaliency(mask):
+    # one combined category: HD/RO/FV/WR
+    imw, imh = mask.shape[0], mask.shape[1]
+    sal = np.zeros((imw, imh))
+    for i in range(imw):
+        for j in range(imh):
+            if (mask[i,j,0]==0 and mask[i,j,1]==0 and mask[i,j,2]==1):
+                sal[i, j] = 1 
+            elif (mask[i,j,0]==1 and mask[i,j,1]==0 and mask[i,j,2]==0):
+                sal[i, j] = 1  
+            elif (mask[i,j,0]==1 and mask[i,j,1]==1 and mask[i,j,2]==0):
+                sal[i, j] = 1   
+            elif (mask[i,j,0]==0 and mask[i,j,1]==1 and mask[i,j,2]==1):
+                sal[i, j] = 0.8  
+            else: pass
+    return np.expand_dims(sal, axis=-1) 
+
+
 def processSUIMDataRFHW(img, mask, sal=False):
     # scaling image data and masks
     img = img / 255
@@ -82,6 +96,7 @@ def processSUIMDataRFHW(img, mask, sal=False):
             m.append(getSaliency(mask[i]))
         else:
             m.append(getRobotFishHumanReefWrecks(mask[i]))
+            #m.append(getRobotFishHumanWrecks(mask[i]))
     m = np.array(m)
     return (img, m)
 
@@ -130,10 +145,4 @@ def getPaths(data_dir):
                     image_paths.append(fname_)
     return image_paths
 
-
-def read_and_resize(path, img_res):
-    # read and resize image files
-    img = misc.imread(path, mode='RGB').astype(np.float)  
-    img = misc.imresize(img, img_res)
-    return img
 
